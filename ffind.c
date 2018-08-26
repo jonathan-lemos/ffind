@@ -289,6 +289,7 @@ int main(int argc, char** argv){
 	for (size_t i = 0; i < threads_len; ++i){
 		if (pthread_create(&(threads[i]), NULL, ffind_worker_thread, &ffp) != 0){
 			log_ethread();
+			free(threads);
 			return -1;
 		}
 	}
@@ -299,5 +300,6 @@ int main(int argc, char** argv){
 		}
 	}
 
+	free(threads);
 	return 0;
 }
