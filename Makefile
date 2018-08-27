@@ -7,14 +7,27 @@ NAME=ffind
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -std=c99 -pthread
 CRELEASEFLAGS=-O2
-CDBGFLAGS=-g -fsanitize=address -fno-omit-frame-pointer
+CDBGFLAGS=-g
 
-release: $(NAME)
-	$(CC) ffind.c -o $(NAME) $(CFLAGS) $(CRELEASEFLAGS)
+FILES=ffind_match
+OBJECTS=$(foreach file,$(FILES),$(file).o)
+DBGOBJECTS=$(foreach file,$(FILES),$(file).dbg.o)
 
-debug: $(NAME)
-	$(CC) ffind.c -o $(NAME) $(CFLAGS) $(CDBGFLAGS)
+release: $(OBJECTS) ffind.o
+	$(CC) -o $(NAME) ffind.o $(OBJECTS) $(CFLAGS) $(CRELEASEFLAGS)
+
+debug: $(DBGOBJECTS) ffind.dbg.o
+	$(CC) -o $(NAME) ffind.dbg.o $(DBGOBJECTS) $(CFLAGS) $(CDBGFLAGS)
+
+test: $(DBGOBJECTS) test.dbg.o
+	$(CC) -o test test.dbg.o $(DBGOBJECTS) $(CFLAGS) $(CDBGFLAGS)
+
+%.o: %.c
+	$(CC) -c -o $@ $< $(CFLAGS) $(CRELEASEFLAGS)
+
+%.dbg.o: %.c
+	$(CC) -c -o $@ $< $(CFLAGS) $(CDBGFLAGS)
 
 .PHONY: clean
 clean:
-	rm -f $(NAME)
+	rm -f $(NAME) $(OBJECTS) $(DBGOBJECTS) test.o test

@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2018 Jonathan Lemos
+ *
+ * This software may be modified and distributed under the terms
+ * of the MIT license.  See the LICENSE file for details.
+ */
+
+#include "ffind_match.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,14 +36,8 @@ size_t dir_stack_len = 0;
 struct ffind_param{
 	const char* find_me;
 	uint16_t flags;
+	int(*path_match)(const char*, const char*);
 };
-
-/* The path matching logic.
- * Currently it only checks if needle is a substring of haystack.
- * TODO: implement asterisk/regex */
-int path_matches(const char* haystack, const char* needle){
-	return strstr(haystack, needle) != NULL;
-}
 
 /* Pushes a directory on to the stack.
  * This string must be allocated with malloc().
@@ -155,7 +157,7 @@ char* make_path(const char* dir, const char* d_name){
 /* The main finding function.
  * Finds all files in a directory that match ffp->find_me
  */
-int ffind_backend(const char* base_dir, const char* find_me, uint16_t flags){
+int ffind_backend(const char* base_dir, const char* find_me, int(*path_match)(const char*, const char*), uint16_t flags){
 	DIR* dp;
 	struct dirent* dnt;
 
@@ -184,9 +186,9 @@ int ffind_backend(const char* base_dir, const char* find_me, uint16_t flags){
 
 		stat(path, &st);
 		if (S_ISDIR(st.st_mode)){
-			ffind_backend(path, find_me, flags);
+			ffind_backend(path, find_me, path_match, flags);
 		}
-		else if (path_matches(path, find_me)){
+		else if (path_match(path, find_me)){
 			/* TODO: implement -print0 */
 			ts_printf("%s\n", path);
 		}
@@ -202,7 +204,7 @@ void* ffind_worker_thread(void* param){
 	char* current_dir;
 
 	while ((current_dir = dir_stack_pop()) != NULL){
-		ffind_backend(current_dir, ffp->find_me, ffp->flags);
+		ffind_backend(current_dir, ffp->find_me, ffp->path_match, ffp->flags);
 		free(current_dir);
 	}
 
@@ -211,7 +213,7 @@ void* ffind_worker_thread(void* param){
 
 /* Because only 1 thread can run in a directory, the initial search is always single threaded.
  * TODO: Make the initial search multi-threaded. */
-int ffind_init_stack(const char* base_dir, const char* find_me, uint16_t flags){
+int ffind_init_stack(const char* base_dir, const char* find_me, int(*path_match)(const char*, const char*), uint16_t flags){
 	DIR* dp;
 	struct dirent* dnt;
 
@@ -249,7 +251,7 @@ int ffind_init_stack(const char* base_dir, const char* find_me, uint16_t flags){
 			}
 		}
 		else{
-			if (path_matches(find_me, path)){
+			if (path_match(path, find_me)){
 				/* TODO: implement -print0 */
 				ts_printf("%s\n", path);
 			}
@@ -272,7 +274,7 @@ int main(int argc, char** argv){
 		return 1;
 	}
 
-	if (ffind_init_stack(argv[1], argv[2], flags) != 0){
+	if (ffind_init_stack(argv[1], argv[2], match_wildcard, flags) != 0){
 		fprintf(stderr, "ffind: Failed to initialize\n");
 		return 1;
 	}
@@ -284,6 +286,7 @@ int main(int argc, char** argv){
 	}
 
 	ffp.find_me = argv[2];
+	ffp.path_match = match_wildcard;
 	ffp.flags = flags;
 
 	for (size_t i = 0; i < threads_len; ++i){

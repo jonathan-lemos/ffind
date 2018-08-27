@@ -10,7 +10,6 @@ make
 ```
 
 ## Roadmap
-* Support wildcard (*) character
 * Support regex
 * Support -print0
 * Fix too many symbolic links issue.
