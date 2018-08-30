@@ -8,41 +8,32 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* Returns true if the needle is within the haystack, false if not.
+ *
+ * The needle can include the '*' character, which matches 0 or more of any character.
+ * A literal '*' can be inputted with "\*"
+ */
 int match_wildcard(const char* haystack, const char* needle){
-	char* needle_buf;
-	char* token;
+	size_t haystack_len = strlen(haystack);
+	size_t needle_len = strlen(needle);
+	size_t haystack_ptr = 0;
+	size_t needle_ptr = 0;
+	for (; haystack_ptr <= haystack_len && needle_ptr <= needle_len; haystack_ptr++, needle_ptr++){
+		if (needle[needle_ptr] == '\\'){
+			needle_ptr++;
+		}
+		else if (needle[needle_ptr] == '*'){
+			needle_ptr++;
+			while (haystack[haystack_ptr] != '\0' && haystack[haystack_ptr] != needle[needle_ptr]){
+				haystack_ptr++;
+			}
+		}
 
-	needle_buf = malloc(strlen(needle) + 1);
-	if (!needle_buf){
-		return -1;
-	}
-	strcpy(needle_buf, needle);
-	token = strtok(needle_buf, "*");
-	if (!token){
-		free(needle_buf);
-		return 1;
-	}
-
-	if (needle[0] != '*' && strstr(haystack, token) != haystack){
-		free(needle_buf);
-		return 0;
-	}
-
-	while (token){
-		char* tmp = strstr(haystack, token);
-		if (!tmp){
-			free(needle_buf);
+		if (haystack[haystack_ptr] != needle[needle_ptr]){
 			return 0;
 		}
-		haystack = tmp + strlen(token);
-		token = strtok(NULL, "*");
 	}
-
-	if (strlen(haystack) != 0 && needle[strlen(needle) - 1] != '*'){
-		free(needle_buf);
-		return 0;
-	}
-
-	free(needle_buf);
-	return 1;
+	haystack_ptr--;
+	needle_ptr--;
+	return haystack[haystack_ptr] == '\0' && needle[needle_ptr] == '\0';
 }

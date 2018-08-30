@@ -3,10 +3,30 @@ Fast, multithreaded find implementation written in C99.
 
 ## Getting Started
 
+### Dependencies
+ffind will only build on a system that has all of the following:
+* gcc
+* make
+* pthread
+
+### Building the project
+
 To build and run the executable:
-```C
+```shell
 make
 ./ffind
+```
+
+To build and run a debug version of the executable:
+```shell
+make debug
+./ffind
+```
+
+To build and run the tests:
+```shell
+make test
+./test
 ```
 
 ## Roadmap

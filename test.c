@@ -10,21 +10,24 @@
 #include <assert.h>
 
 void test_match_wildcard(void){
-	const char* haystack = "/home/equifax/passwords.txt";
-	assert(match_wildcard(haystack, haystack) == 1);
-	assert(match_wildcard(haystack, "/home/nomatchhere") == 0);
-	assert(match_wildcard(haystack, "/home/equifax/passwords") == 0);
-	assert(match_wildcard(haystack, "/home/equifax/passwords.txtt") == 0);
+	assert(match_wildcard("/home/equifax/passwords.txt", "/home/equifax/passwords.txt") == 1);
+	assert(match_wildcard("/home/equifax/passwords.txt", "/home/nomatchhere") == 0);
+	assert(match_wildcard("/home/equifax/passwords.txt", "/home/equifax/passwords") == 0);
+	assert(match_wildcard("/home/equifax/passwords.txt", "/home/equifax/passwords.txtt") == 0);
 
-	assert(match_wildcard(haystack, "*") == 1);
-	assert(match_wildcard(haystack, "*.txt") == 1);
-	assert(match_wildcard(haystack, "/home/*/passwords.txt") == 1);
-	assert(match_wildcard(haystack, "/home/*/*.txt") == 1);
-	assert(match_wildcard(haystack, "/home/*/*.txt*") == 1);
-	assert(match_wildcard(haystack, "*pass*words.t*") == 1);
-	assert(match_wildcard(haystack, "*pass*words.t") == 0);
-	assert(match_wildcard(haystack, "passwords.txt*") == 0);
-	assert(match_wildcard(haystack, "*paword*.txt*s*") == 0);
+	assert(match_wildcard("/home/equifax/passwords.txt", "*") == 1);
+	assert(match_wildcard("/home/equifax/passwords.txt", "*.txt") == 1);
+	assert(match_wildcard("/home/equifax/passwords.txt", "/home/*/passwords.txt") == 1);
+	assert(match_wildcard("/home/equifax/passwords.txt", "/home/*/*.txt") == 1);
+	assert(match_wildcard("/home/equifax/passwords.txt", "/home/*/*.txt*") == 1);
+	assert(match_wildcard("/home/equifax/passwords.txt", "*pass*words.t*") == 1);
+	assert(match_wildcard("/home/equifax/passwords.txt", "*pass*words.t") == 0);
+	assert(match_wildcard("/home/equifax/passwords.txt", "passwords.txt*") == 0);
+	assert(match_wildcard("/home/equifax/passwords.txt", "*paword*.txt*s*") == 0);
+
+	assert(match_wildcard("/home/**.txt*", "/home/\\*\\*.txt\\*") == 1);
+	assert(match_wildcard("/home/**.txt*", "/home/*.tx\\*") == 0);
+	assert(match_wildcard("/home/**.txt*", "/home/*") == 1);
 }
 
 int main(void){
