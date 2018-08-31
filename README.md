@@ -5,9 +5,9 @@ Fast, multithreaded find implementation written in C99.
 
 ### Dependencies
 ffind will only build on a system that has all of the following:
-* gcc
+* POSIX compatibillity (OSX, Cygwin, Linux, BSD, etc.)
+* gcc (To use a different C compiler, run with `$ make CC=your-cc`)
 * make
-* pthread
 
 ### Building the project
 
@@ -30,9 +30,7 @@ make test
 ```
 
 ## Roadmap
-* Support regex
-* Support -print0
-* Fix too many symbolic links issue.
+* POSIX conformance
 
 ## License
 This project is licensed under the MIT License. See [LICENSE.txt](LICENSE.txt) for details.

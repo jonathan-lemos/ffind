@@ -4,7 +4,7 @@
 # of the MIT license.  See the LICENSE file for details.
 
 NAME=ffind
-CC=gcc
+CC?=gcc
 CFLAGS=-Wall -Wextra -pedantic -std=c99 -pthread
 CRELEASEFLAGS=-O2
 CDBGFLAGS=-g
@@ -30,4 +30,4 @@ test: $(DBGOBJECTS) test.dbg.o
 
 .PHONY: clean
 clean:
-	rm -f $(NAME) $(OBJECTS) $(DBGOBJECTS) test.o test
+	rm -f $(NAME) $(OBJECTS) $(DBGOBJECTS) test.dbg.o ffind.dbg.o ffind.o test

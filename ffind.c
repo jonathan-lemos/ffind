@@ -5,8 +5,9 @@
  * of the MIT license.  See the LICENSE file for details.
  */
 
+#include "ffind.h"
 #include "ffind_match.h"
-#include <stdio.h>
+#include "log.h"
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -16,24 +17,13 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 
-#ifndef __GNUC__
-#define __attribute__(x)
-#endif
-
-#define N_THREADS (8)
-
-#define log_enomem()      ts_eprintf("ffind: failed to allocate requested memory\n")
-#define log_eopendir(dir) ts_eprintf("ffind: failed to open %s (%s)\n", dir, strerror(errno))
-#define log_ethread()     ts_eprintf("ffind: failed to start thread (%s)\n", strerror(errno))
-#define log_ejoin()       ts_eprintf("ffind: failed to join thread (%s)\n", strerror(errno))
-
 pthread_mutex_t mutex_dir_stack = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t mutex_stdio = PTHREAD_MUTEX_INITIALIZER;
 
 char** dir_stack = NULL;
 size_t dir_stack_len = 0;
 
-struct ffind_param{
+struct __ffind_param{
 	const char* find_me;
 	uint16_t flags;
 	int(*path_match)(const char*, const char*);
@@ -105,37 +95,7 @@ void dir_stack_free(void){
 	pthread_mutex_unlock(&mutex_dir_stack);
 }
 
-/* Thread-safe printf.
- * Waits for the stdio mutex before printing.
- */
-__attribute__((format(printf, 1, 2)))
-int ts_printf(const char* format, ...){
-	int res;
-	va_list ap;
 
-	pthread_mutex_lock(&mutex_stdio);
-	va_start(ap, format);
-
-	res = vprintf(format, ap);
-
-	va_end(ap);
-	pthread_mutex_unlock(&mutex_stdio);
-	return res;
-}
-
-/* Thread-safe fprintf(stderr).
- * Waits for the stdio mutex before printing.
- */
-__attribute__((format(printf, 1, 2)))
-int ts_eprintf(const char* format, ...){
-	int res;
-	va_list ap;
-
-	va_start(ap, format);
-	res = vfprintf(stderr, format, ap);
-	va_end(ap);
-	return res;
-}
 
 /* Creates a path out of a directory and dirent.d_name
  * This string must be free()'d after use.
@@ -184,13 +144,13 @@ int ffind_backend(const char* base_dir, const char* find_me, int(*path_match)(co
 			return -1;
 		}
 
-		stat(path, &st);
+		lstat(path, &st);
 		if (S_ISDIR(st.st_mode)){
 			ffind_backend(path, find_me, path_match, flags);
 		}
 		else if (path_match(path, find_me)){
 			/* TODO: implement -print0 */
-			ts_printf("%s\n", path);
+			printf_mt("%s\n", path);
 		}
 		free(path);
 	}
@@ -216,6 +176,7 @@ void* ffind_worker_thread(void* param){
 int ffind_init_stack(const char* base_dir, const char* find_me, int(*path_match)(const char*, const char*), uint16_t flags){
 	DIR* dp;
 	struct dirent* dnt;
+	(void)flags;
 
 	dp = opendir(base_dir);
 	if (!dp){
@@ -253,7 +214,7 @@ int ffind_init_stack(const char* base_dir, const char* find_me, int(*path_match)
 		else{
 			if (path_match(path, find_me)){
 				/* TODO: implement -print0 */
-				ts_printf("%s\n", path);
+				printf_mt("%s\n", path);
 			}
 			free(path);
 		}
@@ -263,29 +224,27 @@ int ffind_init_stack(const char* base_dir, const char* find_me, int(*path_match)
 	return 0;
 }
 
-int main(int argc, char** argv){
+int ffind_create_threads(const char* base_dir, const char* needle, size_t n_threads, pthread_t** out, size_t* out_len){
 	pthread_t* threads;
-	size_t threads_len = N_THREADS;
+	size_t threads_len = n_threads;
 	struct ffind_param ffp;
 	uint16_t flags = 0;
+	int ret = 0;
 
-	if (argc < 3){
-		printf("Usage: %s [directory] [pattern]\n", argv[0]);
-		return 1;
-	}
-
-	if (ffind_init_stack(argv[1], argv[2], match_wildcard, flags) != 0){
-		fprintf(stderr, "ffind: Failed to initialize\n");
-		return 1;
+	if (ffind_init_stack(base_dir, needle, match_wildcard, flags) != 0){
+		eprintf_mt("ffind: Failed to initialize\n");
+		ret = -1;
+		goto cleanup;
 	}
 
 	threads = malloc(threads_len * sizeof(*threads));
 	if (!threads){
 		log_enomem();
-		return 1;
+		ret = -1;
+		goto cleanup;
 	}
 
-	ffp.find_me = argv[2];
+	ffp.find_me = needle;
 	ffp.path_match = match_wildcard;
 	ffp.flags = flags;
 
@@ -293,16 +252,32 @@ int main(int argc, char** argv){
 		if (pthread_create(&(threads[i]), NULL, ffind_worker_thread, &ffp) != 0){
 			log_ethread();
 			free(threads);
-			return -1;
+			ret = -1;
+			goto cleanup;
 		}
 	}
 
+cleanup:
+	if (ret != 0){
+		free(threads);
+		*out = NULL;
+		*out_len = 0;
+	}
+	else{
+		*out = threads;
+		*out_len = threads_len;
+	}
+	return ret;
+}
+
+int ffind_join_threads(pthread_t* threads, size_t threads_len){
+	int ret = 0;
 	for (size_t i = 0; i < threads_len; ++i){
 		if (pthread_join(threads[i], NULL) != 0){
 			log_ejoin();
+			ret = -1;
 		}
 	}
-
 	free(threads);
-	return 0;
+	return ret;
 }
