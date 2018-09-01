@@ -5,7 +5,7 @@
  * of the MIT license.  See the LICENSE file for details.
  */
 
-#include "ffind_match.h"
+#include "match.h"
 #include <stdio.h>
 #include <assert.h>
 

@@ -33,9 +33,10 @@ struct pattern{
 		pcre*       pcre;
 		pcre*       javascript;
 	}p;
-	uint_fast8_t flags;
 };
 
-int match(const char* haystack, struct pattern* needle);
+int match(const char* haystack, const struct pattern* needle);
+int pat_init(const char* pattern, struct pattern* in_out, unsigned flags);
+void pat_free(struct pattern* pat);
 
 #endif

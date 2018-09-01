@@ -6,8 +6,10 @@
  */
 
 #include "ffind.h"
-#include "ffind_match.h"
+#include "match.h"
+#include "flags.h"
 #include "log.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
@@ -17,22 +19,21 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 
-pthread_mutex_t mutex_dir_stack = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t mutex_stdio = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex_dir_stack = PTHREAD_MUTEX_INITIALIZER;
 
 char** dir_stack = NULL;
 size_t dir_stack_len = 0;
 
-struct __ffind_param{
-	const char* find_me;
-	uint16_t flags;
-	int(*path_match)(const char*, const char*);
+struct ffind_param{
+	const struct pattern* p;
+	const struct ffind_flags* flags;
+	int maxdepth;
 };
 
 /* Pushes a directory on to the stack.
  * This string must be allocated with malloc().
  * This function is thread-safe. */
-int dir_stack_push(char* entry){
+static int dir_stack_push(char* entry){
 	void* tmp;
 	pthread_mutex_lock(&mutex_dir_stack);
 
@@ -56,7 +57,7 @@ int dir_stack_push(char* entry){
 /* Pops the top directory off the stack.
  * This string must be free()'d after use.
  * This function is thread-safe. */
-char* dir_stack_pop(void){
+static char* dir_stack_pop(void){
 	char* ret;
 	void* tmp;
 	pthread_mutex_lock(&mutex_dir_stack);
@@ -82,7 +83,8 @@ char* dir_stack_pop(void){
 
 /* Frees every entry in a directory stack
  * This function is thread-safe. */
-void dir_stack_free(void){
+__attribute__((unused))
+static void dir_stack_free(void){
 	pthread_mutex_lock(&mutex_dir_stack);
 
 	for (size_t i = 0; i < dir_stack_len; ++i){
@@ -95,12 +97,10 @@ void dir_stack_free(void){
 	pthread_mutex_unlock(&mutex_dir_stack);
 }
 
-
-
 /* Creates a path out of a directory and dirent.d_name
  * This string must be free()'d after use.
  */
-char* make_path(const char* dir, const char* d_name){
+static char* make_path(const char* dir, const char* d_name){
 	char* path = malloc(strlen(dir) + strlen(d_name) + 2);
 	if (!path){
 		return NULL;
@@ -114,12 +114,50 @@ char* make_path(const char* dir, const char* d_name){
 	return path;
 }
 
+inline static void print_result(const char* path, unsigned print0){
+	switch (print0){
+		case 0:
+			printf_mt("%s\n", path);
+			break;
+		default:
+			fwrite(path, 1, strlen(path) + 1, stdout);
+	}
+}
+
+inline static void print_match(const char* path, mode_t st_mode, const struct pattern* pat, char type, unsigned print0){
+	switch (type){
+	case 'f':
+		if (!S_ISREG(st_mode)){
+			return;
+		}
+		break;
+	case 'd':
+		if (!S_ISDIR(st_mode)){
+			return;
+		}
+	}
+
+	if (match(path, pat) == 1){
+		switch (print0){
+			case 0:
+				printf("%s\n", path);
+				break;
+			case 1:
+				fwrite(path, 1, strlen(path) + 1, stdout);
+		}
+	}
+}
+
 /* The main finding function.
  * Finds all files in a directory that match ffp->find_me
  */
-int ffind_backend(const char* base_dir, const char* find_me, int(*path_match)(const char*, const char*), uint16_t flags){
+int ffind_backend(const char* base_dir, const struct pattern* pattern, const struct ffind_flags* ffl, int max_depth){
 	DIR* dp;
 	struct dirent* dnt;
+
+	if (max_depth == 0){
+		return 0;
+	}
 
 	dp = opendir(base_dir);
 	if (!dp){
@@ -144,13 +182,17 @@ int ffind_backend(const char* base_dir, const char* find_me, int(*path_match)(co
 			return -1;
 		}
 
-		lstat(path, &st);
-		if (S_ISDIR(st.st_mode)){
-			ffind_backend(path, find_me, path_match, flags);
+		switch (ffl->follow_symlink){
+		case 0:
+			lstat(path, &st);
+			break;
+		default:
+			stat(path, &st);
+			break;
 		}
-		else if (path_match(path, find_me)){
-			/* TODO: implement -print0 */
-			printf_mt("%s\n", path);
+		print_match(path, st.st_mode, pattern, ffl->type, ffl->print0);
+		if (S_ISDIR(st.st_mode)){
+			ffind_backend(path, pattern, ffl, max_depth - 1);
 		}
 		free(path);
 	}
@@ -164,7 +206,7 @@ void* ffind_worker_thread(void* param){
 	char* current_dir;
 
 	while ((current_dir = dir_stack_pop()) != NULL){
-		ffind_backend(current_dir, ffp->find_me, ffp->path_match, ffp->flags);
+		ffind_backend(current_dir, ffp->p, ffp->flags, ffp->maxdepth);
 		free(current_dir);
 	}
 
@@ -173,10 +215,9 @@ void* ffind_worker_thread(void* param){
 
 /* Because only 1 thread can run in a directory, the initial search is always single threaded.
  * TODO: Make the initial search multi-threaded. */
-int ffind_init_stack(const char* base_dir, const char* find_me, int(*path_match)(const char*, const char*), uint16_t flags){
+int ffind_init_stack(const char* base_dir, const struct pattern* pattern, const struct ffind_flags* ffl){
 	DIR* dp;
 	struct dirent* dnt;
-	(void)flags;
 
 	dp = opendir(base_dir);
 	if (!dp){
@@ -201,21 +242,19 @@ int ffind_init_stack(const char* base_dir, const char* find_me, int(*path_match)
 			return -1;
 		}
 
-		stat(path, &st);
+		switch (ffl->follow_symlink){
+		case 0:
+			lstat(path, &st);
+			break;
+		default:
+			stat(path, &st);
+			break;
+		}
+		print_match(path, st.st_mode, pattern, ffl->type, ffl->print0);
 		if (S_ISDIR(st.st_mode)){
-			if (dir_stack_push(path) != 0){
-				log_enomem();
-				dir_stack_free();
-				free(path);
-				closedir(dp);
-				return -1;
-			}
+			dir_stack_push(path);
 		}
 		else{
-			if (path_match(path, find_me)){
-				/* TODO: implement -print0 */
-				printf_mt("%s\n", path);
-			}
 			free(path);
 		}
 	}
@@ -224,31 +263,34 @@ int ffind_init_stack(const char* base_dir, const char* find_me, int(*path_match)
 	return 0;
 }
 
-int ffind_create_threads(const char* base_dir, const char* needle, size_t n_threads, pthread_t** out, size_t* out_len){
-	pthread_t* threads;
-	size_t threads_len = n_threads;
-	struct ffind_param ffp;
-	uint16_t flags = 0;
+int ffind_create_threads(const char* base_dir, const struct parsed_data* pd, pthread_t** out){
+	static struct ffind_param ffp;
+	pthread_t* threads = NULL;
 	int ret = 0;
 
-	if (ffind_init_stack(base_dir, needle, match_wildcard, flags) != 0){
-		eprintf_mt("ffind: Failed to initialize\n");
+	if (pd->n_threads == 0){
+		eprintf_mt("ffind: Cannot start with 0 threads.\n");
 		ret = -1;
 		goto cleanup;
 	}
 
-	threads = malloc(threads_len * sizeof(*threads));
+	if (ffind_init_stack(base_dir, &(pd->pat), &(pd->flags)) != 0){
+		ret = -1;
+		goto cleanup;
+	}
+
+	threads = malloc(pd->n_threads * sizeof(*threads));
 	if (!threads){
 		log_enomem();
 		ret = -1;
 		goto cleanup;
 	}
 
-	ffp.find_me = needle;
-	ffp.path_match = match_wildcard;
-	ffp.flags = flags;
+	ffp.p = &(pd->pat);
+	ffp.flags = &(pd->flags);
+	ffp.maxdepth = pd->maxdepth;
 
-	for (size_t i = 0; i < threads_len; ++i){
+	for (size_t i = 0; i < pd->n_threads; ++i){
 		if (pthread_create(&(threads[i]), NULL, ffind_worker_thread, &ffp) != 0){
 			log_ethread();
 			free(threads);
@@ -261,11 +303,9 @@ cleanup:
 	if (ret != 0){
 		free(threads);
 		*out = NULL;
-		*out_len = 0;
 	}
 	else{
 		*out = threads;
-		*out_len = threads_len;
 	}
 	return ret;
 }

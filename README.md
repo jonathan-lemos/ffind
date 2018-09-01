@@ -1,4 +1,4 @@
-# ffind (work in progress)
+# ffind
 Fast, multithreaded find implementation written in C99.
 
 ## Getting Started
@@ -8,6 +8,7 @@ ffind will only build on a system that has all of the following:
 * POSIX compatibillity (OSX, Cygwin, Linux, BSD, etc.)
 * gcc (To use a different C compiler, run with `$ make CC=your-cc`)
 * make
+* PCRE library
 
 ### Building the project
 

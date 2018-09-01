@@ -8,9 +8,11 @@
 #ifndef __FFIND_H
 #define __FFIND_H
 
+#include "flags.h"
+#include "match.h"
 #include <pthread.h>
 
-int ffind_create_threads(const char* base_dir, const char* needle, pthread_t** out, size_t* out_len);
+int ffind_create_threads(const char* base_dir, const struct parsed_data* pd, pthread_t** out);
 int ffind_join_threads(pthread_t* threads, size_t threads_len);
 
 #endif

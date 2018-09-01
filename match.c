@@ -13,7 +13,7 @@
 #include <fnmatch.h>
 
 int match_fnmatch(const char* haystack, const char* needle){
-	return fnmatch(needle, haystack, 0);
+	return fnmatch(needle, haystack, 0) == 0;
 }
 
 int match_fnmatch_literal(const char* haystack, const char* needle){
@@ -57,12 +57,29 @@ int match_regex_posix(const char* haystack, const regex_t* regex){
 
 int match_regex_pcre(const char* haystack, const pcre* pcre){
 	int res = pcre_exec(pcre, NULL, haystack, strlen(haystack), 0, 0, NULL, 0);
-	return !(res == PCRE_ERROR_NOMATCH);
+	return res != PCRE_ERROR_NOMATCH;
 }
 
 #define match_regex_javascript(haystack, needle) match_regex_pcre(haystack, needle)
 
-int match(const char* haystack, struct pattern* needle){
+__attribute__((unused))
+static char* convert_tolcase(const char* s){
+	char* str = malloc(strlen(s) + 1);
+	if (!str){
+		log_enomem();
+		return NULL;
+	}
+	for (size_t i = 0; i < strlen(s) + 1; ++i){
+		char c = s[i];
+		if (c >= 'A' && c <= 'Z'){
+			c += 'a' - 'A';
+		}
+		str[i] = c;
+	}
+	return str;
+}
+
+int match(const char* haystack, const struct pattern* needle){
 	switch (needle->p_type){
 	case TYPE_FNMATCH:
 		return match_fnmatch(haystack, needle->p.fnmatch);
@@ -78,66 +95,115 @@ int match(const char* haystack, struct pattern* needle){
 	case TYPE_REGEX_JAVASCRIPT:
 		return match_regex_pcre(haystack, needle->p.javascript);
 	}
+	return 0;
 }
 
-int pat_create(const char* pattern, enum pattern_type p_type, uint_fast8_t flags, union pat* out){
-	int res;
-	const char* err;
+unsigned flags_convert(enum pattern_type p_type, unsigned f){
+	int flags_new = 0;
 
 	switch (p_type){
 	case TYPE_FNMATCH:
 	case TYPE_FNMATCH_ESCAPE:
 	case TYPE_FNMATCH_LITERAL:
-		out->fnmatch = pattern;
-		return 0;
+		flags_new |= PFLAG_ICASE;
+		break;
 
 	case TYPE_REGEX_POSIX_EX:
-		flags |= REG_EXTENDED;
+		flags_new |= REG_EXTENDED;
 		//fall through
 	case TYPE_REGEX_POSIX:
-		res = regcomp(out->regex, pattern, flags);
-		if (res != 0){
-			char errbuf[256];
-			regerror(res, out->regex, errbuf, sizeof(errbuf));
-			eprintf_mt("ffind: Failed to create posix regex (%s)\n", errbuf);
-			return -1;
+		if (f & PFLAG_ICASE){
+			flags_new |= REG_ICASE;
 		}
-		return 0;
-
-	case TYPE_REGEX_PCRE:
-		out->pcre = pcre_compile(pattern, flags, &err, &res, NULL);
-		if (!out->pcre){
-			eprintf_mt("ffind: Failed to compile pcre regex at character %d (%s)\n", res, err);
-			return -1;
-		}
-		return 0;
+		break;
 
 	case TYPE_REGEX_JAVASCRIPT:
-		out->javascript = pcre_compile(pattern, flags, &err, &res, NULL);
-
-		if (!out->javascript){
-			eprintf_mt("ffind: Failed to compile javascript regex at character %d (%s)\n", res, err);
-			return -1;
+		flags_new |= PCRE_JAVASCRIPT_COMPAT;
+		//fall through
+	case TYPE_REGEX_PCRE:
+		if (f & PFLAG_ICASE){
+			flags_new |= PCRE_CASELESS;
 		}
-		return 0;
+		break;
 	}
+
+	return flags_new;
 }
 
-void pat_free(enum pattern_type p_type, union pat* p){
-	switch (p_type){
-		case TYPE_FNMATCH:
-		case TYPE_FNMATCH_ESCAPE:
-		case TYPE_FNMATCH_LITERAL:
-			return;
-		case TYPE_REGEX_POSIX:
-		case TYPE_REGEX_POSIX_EX:
-			regfree(p->regex);
-			return;
-		case TYPE_REGEX_PCRE:
-			pcre_free(p->pcre);
-			return;
-		case TYPE_REGEX_JAVASCRIPT:
-			pcre_free(p->javascript);
-			return;
+int pat_init(const char* pattern, struct pattern* in_out, unsigned flags){
+	int res;
+	const char* err;
+	int ret = 0;
+	int flags_new = flags_convert(in_out->p_type, flags);
+
+	switch (in_out->p_type){
+	case TYPE_FNMATCH:
+	case TYPE_FNMATCH_ESCAPE:
+	case TYPE_FNMATCH_LITERAL:
+		in_out->p.fnmatch = pattern;
+		break;
+
+	case TYPE_REGEX_POSIX:
+	case TYPE_REGEX_POSIX_EX:
+		res = regcomp(in_out->p.regex, pattern, flags_new);
+		if (res != 0){
+			char errbuf[256];
+			regerror(res, in_out->p.regex, errbuf, sizeof(errbuf));
+			eprintf_mt("ffind: Failed to create posix regex (%s)\n", errbuf);
+			ret = -1;
+			break;
+		}
+		break;
+
+	case TYPE_REGEX_PCRE:
+		in_out->p.pcre = pcre_compile(pattern, flags_new, &err, &res, NULL);
+		if (!in_out->p.pcre){
+			eprintf_mt("ffind: Failed to compile pcre regex at character %d (%s)\n", res, err);
+			ret = -1;
+			break;
+		}
+		break;
+
+	case TYPE_REGEX_JAVASCRIPT:
+		in_out->p.javascript = pcre_compile(pattern, flags_new, &err, &res, NULL);
+
+		if (!in_out->p.javascript){
+			eprintf_mt("ffind: Failed to compile javascript regex at character %d (%s)\n", res, err);
+			ret = -1;
+			break;
+		}
+		break;
+
+	}
+
+	return ret;
+}
+
+void pat_free(struct pattern* pat){
+	if (!pat){
+		return;
+	}
+
+	switch (pat->p_type){
+	case TYPE_FNMATCH:
+	case TYPE_FNMATCH_ESCAPE:
+	case TYPE_FNMATCH_LITERAL:
+		return;
+	case TYPE_REGEX_POSIX:
+	case TYPE_REGEX_POSIX_EX:
+		if (pat->p.regex){
+			regfree(pat->p.regex);
+		}
+		return;
+	case TYPE_REGEX_PCRE:
+		if (pat->p.pcre){
+			pcre_free(pat->p.pcre);
+		}
+		return;
+	case TYPE_REGEX_JAVASCRIPT:
+		if (pat->p.javascript){
+			pcre_free(pat->p.javascript);
+		}
+		return;
 	}
 }

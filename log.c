@@ -10,13 +10,12 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-pthread_mutex_t mutex_stdio = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex_stdio = PTHREAD_MUTEX_INITIALIZER;
 
 /* Thread-safe printf.
  * Waits for the stdio mutex before printing.
  */
-__attribute__((format(printf, 1, 2)))
-int ts_printf(const char* format, ...){
+int printf_mt(const char* format, ...){
 	int res;
 	va_list ap;
 
@@ -33,8 +32,7 @@ int ts_printf(const char* format, ...){
 /* Thread-safe fprintf(stderr).
  * Waits for the stdio mutex before printing.
  */
-__attribute__((format(printf, 1, 2)))
-int ts_eprintf(const char* format, ...){
+int eprintf_mt(const char* format, ...){
 	int res;
 	va_list ap;
 

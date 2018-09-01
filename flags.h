@@ -17,10 +17,20 @@ struct ffind_flags{
 	unsigned print0:1;
 };
 
+struct parsed_data{
+	struct ffind_flags flags;
+	char** directories;
+	size_t directories_len;
+	struct pattern pat;
+	int maxdepth;
+	size_t n_threads;
+};
+
 /* Parses options from the command line and stores them in the output variables.
  *
  * Returns 1 if "--help" or "--version" was used, -1 on error, 0 on success.
  */
-int parse_options(int argc, char** argv, struct ffind_flags* flags_out, char*** dir_out, size_t* dir_out_len, struct pattern* pattern_out);
+int parse_options(int argc, char** argv, struct parsed_data* in_out);
+void free_options(struct parsed_data* pd);
 
 #endif
