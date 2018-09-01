@@ -1,12 +1,13 @@
-/*
- * Copyright (c) 2018 Jonathan Lemos
+/** @file options.h
+ * @brief Parses command-line options.
+ * @copyright Copyright (c) 2018 Jonathan Lemos
  *
  * This software may be modified and distributed under the terms
  * of the MIT license.  See the LICENSE file for details.
  */
 
-#ifndef __FLAGS_H
-#define __FLAGS_H
+#ifndef __OPTIONS_H
+#define __OPTIONS_H
 
 #include "match.h"
 #include <stddef.h>

@@ -1,12 +1,13 @@
-/*
- * Copyright (c) 2018 Jonathan Lemos
+/** @file main.c
+ * @brief Main function
+ * @copyright Copyright (c) 2018 Jonathan Lemos
  *
  * This software may be modified and distributed under the terms
  * of the MIT license.  See the LICENSE file for details.
  */
 
 #include "ffind.h"
-#include "flags.h"
+#include "options.h"
 #include "log.h"
 #include <stdio.h>
 #include <stdlib.h>

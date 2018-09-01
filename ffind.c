@@ -1,5 +1,6 @@
-/*
- * Copyright (c) 2018 Jonathan Lemos
+/** @file ffind.c
+ * @brief The finding backend.
+ * @copyright Copyright (c) 2018 Jonathan Lemos
  *
  * This software may be modified and distributed under the terms
  * of the MIT license.  See the LICENSE file for details.
@@ -7,7 +8,7 @@
 
 #include "ffind.h"
 #include "match.h"
-#include "flags.h"
+#include "options.h"
 #include "log.h"
 #include <stdio.h>
 #include <stdlib.h>

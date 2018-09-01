@@ -1,4 +1,5 @@
-/*
+/** @file ffind.h
+ * @brief The finding backend.
  * Copyright (c) 2018 Jonathan Lemos
  *
  * This software may be modified and distributed under the terms
@@ -8,7 +9,7 @@
 #ifndef __FFIND_H
 #define __FFIND_H
 
-#include "flags.h"
+#include "options.h"
 #include "match.h"
 #include <pthread.h>
 

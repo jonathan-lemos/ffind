@@ -10,7 +10,7 @@ LDFLAGS=-lpcre
 CRELEASEFLAGS=-O2
 CDBGFLAGS=-g
 
-FILES=match ffind flags log
+FILES=match ffind options log
 OBJECTS=$(foreach file,$(FILES),$(file).o)
 DBGOBJECTS=$(foreach file,$(FILES),$(file).dbg.o)
 
