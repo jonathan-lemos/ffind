@@ -1,0 +1,95 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "FFIND" "1" "September 2018" "" ""
+.
+.SH "NAME"
+\fBffind\fR \- Quickly searches for files\.
+.
+.SH "SYNOPSIS"
+\fBfind [\-eHij4lLP] [directories\.\.\.] [pattern]\fR
+.
+.SH "DESCRIPTION"
+\fBffind\fR is a multithreaded replacement for POSIX find\. It recursively searches directories for files matching a certain pattern\. If a directory is not specified, \fB\'\.\'\fR is assumed\. If a pattern is not given, \fB\'*\'\fR is used\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB\-e\fR
+Support escaping \fB\'*\'\fR with \fB\'\e*\'\fR in the \fB\-name\fR parameter\. Escape characters are automatically supported in the \fB\-regex\fR parameter, so this option is not needed in that case\.
+.
+.TP
+\fB\-H\fR
+Do not follow symbolic links\. This is the default option\.
+.
+.TP
+\fB\-I\fR
+Ignore case in the \fB\-name\fR or \fB\-regex\fR parameters\.
+.
+.TP
+\fB\-jN\fR
+Use \fIN\fR threads when searching\. For example, use \fB\-j8\fR to use 8 threads\.
+.
+.TP
+\fB\-l\fR
+Match all characters in the \fB\-name\fR parameter literally\. In this case, \fBffind\fR matches if the \fB\-name\fR parameter is a substring of the full path\.
+.
+.TP
+\fB\-L\fR
+Follow symbolic links\.
+.
+.TP
+\fB\-P\fR
+Identical to \fB\-H\fR\.
+.
+.P
+If more than one of \fB\-H\fR, \fB\-L\fR, or \fB\-P\fR is specified, the last one takes effect\.
+.
+.TP
+\fB\-\-help\fR
+Prints the help menu and exits\.
+.
+.TP
+\fB\-maxdepth N\fR
+Limit the maximum recursion depth to \fIN\fR\. For example, \fB\-maxdepth 2\fR will limit \fBffind\fR to 2 subfolders\.
+.
+.TP
+\fB\-name PATTERN\fR
+Print only the files matching this \fIPATTERN\fR\. The \fB\'*\'\fR character can be used to match 0 or more of any character\. The \fBfnmatch(3)\fR function call is used to perform this match\.
+.
+.TP
+\fB\-print0\fR
+Seperate entries with \fB\'><\'\fR instead of \fB\'\en\'\fR\. Useful for piping to \fBxargs \-0\fR\.
+.
+.TP
+\fB\-regex REGEXP\fR
+Print only the files matching this \fIREGEXP\fR\. The default regex dialect is \'posix\-basic\'\. Use \fB\-regextype\fR to use a different one\.
+.
+.TP
+\fB\-regextype TYPE\fR
+Use a different regex dialect\. Use \fB\-regextype help\fR to see all available dialects\.
+.
+.TP
+\fB\-type C\fR :
+.
+.IP
+Print only listings matching one of the following types:
+.
+.IP
+\fBd\fR Directory
+.
+.IP
+\fBf\fR File
+.
+.TP
+\fB\-\-version\fR
+Displays \fBffind\fR\'s version and exits\.
+.
+.SH "AUTHOR"
+Jonathan Lemos (jonathanlemos@protonmail\.com)
+.
+.SH "COPYRIGHT"
+\fBffind\fR is Copyright (C) 2018 Jonathan Lemos\. \fBffind\fR is released under the MIT License\. See \fILICENSE\.txt\fR for details\.
+.
+.SH "SEE ALSO"
+find(1)

@@ -113,7 +113,14 @@ int parse_options(int argc, char** argv, struct parsed_data* in_out){
 		else if (!strcmp(argv[i], "-name")){
 			i++;
 			pat_text = argv[i];
-			in_out->pat.p_type = TYPE_FNMATCH;
+			switch (in_out->pat.p_type){
+				case TYPE_FNMATCH:
+				case TYPE_FNMATCH_ESCAPE:
+				case TYPE_FNMATCH_LITERAL:
+					break;
+				default:
+					in_out->pat.p_type = TYPE_FNMATCH;
+			}
 		}
 
 		else if (!strcmp(argv[i], "-print0")){
@@ -123,7 +130,15 @@ int parse_options(int argc, char** argv, struct parsed_data* in_out){
 		else if (!strcmp(argv[i], "-regex")){
 			i++;
 			pat_text = argv[i];
-			in_out->pat.p_type = TYPE_REGEX_POSIX;
+			switch (in_out->pat.p_type){
+			case TYPE_FNMATCH:
+			case TYPE_FNMATCH_ESCAPE:
+			case TYPE_FNMATCH_LITERAL:
+				in_out->pat.p_type = TYPE_REGEX_POSIX;
+				break;
+			default:
+				;
+			}
 		}
 
 		else if (!strcmp(argv[i], "-regextype")){
@@ -194,9 +209,6 @@ int parse_options(int argc, char** argv, struct parsed_data* in_out){
 				case 'e':
 					in_out->pat.p_type = TYPE_FNMATCH_ESCAPE;
 					break;
-				case 'l':
-					in_out->pat.p_type = TYPE_FNMATCH_LITERAL;
-					break;
 				case 'I':
 					p_flags |= PFLAG_ICASE;
 					break;
@@ -214,10 +226,13 @@ int parse_options(int argc, char** argv, struct parsed_data* in_out){
 						goto cleanup;
 					}
 					break;
+				case 'l':
+					in_out->pat.p_type = TYPE_FNMATCH_LITERAL;
+					break;
 				case 'L':
-				case 'H':
 					in_out->flags.follow_symlink = 1;
 					break;
+				case 'H':
 				case 'P':
 					in_out->flags.follow_symlink = 0;
 					break;
