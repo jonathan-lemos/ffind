@@ -5,8 +5,8 @@ Fast, multithreaded find implementation written in C99.
 
 ### Dependencies
 ffind will only build on a system that has all of the following:
-* POSIX compatibillity (OSX, Cygwin, Linux, BSD, etc.)
-* gcc (To use a different C compiler, run with `$ make CC=your-cc`)
+* POSIX-compatibible OS (OSX, Cygwin, Linux, BSD, etc.)
+* gcc
 * make
 * PCRE library
 
@@ -24,10 +24,10 @@ make debug
 ./ffind
 ```
 
-To build and run the tests:
+To build and view the documentation (requires Doxygen):
 ```shell
-make test
-./test
+doxygen
+firefox ./docs/html/globals.html
 ```
 
 ## Roadmap

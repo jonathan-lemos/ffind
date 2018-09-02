@@ -9,10 +9,7 @@
 #ifndef __LOG_H
 #define __LOG_H
 
-#ifndef __GNUC__
-#define __attribute__(x)
-#endif
-
+#include "attribute.h"
 #include <stdarg.h>
 
 #define log_enomem()      eprintf_mt("ffind: failed to allocate requested memory\n")
@@ -20,9 +17,30 @@
 #define log_ethread()     eprintf_mt("ffind: failed to start thread (%s)\n", strerror(errno))
 #define log_ejoin()       eprintf_mt("ffind: failed to join thread (%s)\n", strerror(errno))
 
-/* Thread-safe printf. */
-int printf_mt(const char* format, ...) __attribute__((format(printf, 1, 2)));
-/* Thread-safe fprintf(stderr). */
-int eprintf_mt(const char* format, ...) __attribute__((format(printf, 1, 2)));
+/**
+ * @brief Thread-safe printf.<br>
+ * Only one thread will be allowed to print through this function at a time.<br>
+ * This does not protect against calls to printf()/fprintf(), but it does protect against calls to printf_mt()/eprintf_mt().
+ *
+ * @param format The printf format string.
+ *
+ * @param ... The printf arguments, if any.
+ *
+ * @return The number of characters successfully written.
+ */
+int printf_mt(const char* format, ...) FF_HOT FF_PRINTF_LIKE(1);
+
+/**
+ * @brief Thread-safe fprintf(stderr).<br>
+ * Only one thread will be allowed to print through this function at a time.<br>
+ * This does not protect against calls to printf()/fprintf(), but it does protect against calls to printf_mt()/eprintf_mt().
+ *
+ * @param format The printf format string.
+ *
+ * @param ... The printf arguments, if any.
+ *
+ * @return The number of characters successfully written.
+ */
+int eprintf_mt(const char* format, ...) FF_COLD FF_PRINTF_LIKE(1);
 
 #endif

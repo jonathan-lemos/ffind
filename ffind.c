@@ -84,8 +84,7 @@ static char* dir_stack_pop(void){
 
 /* Frees every entry in a directory stack
  * This function is thread-safe. */
-__attribute__((unused))
-static void dir_stack_free(void){
+FF_UNUSED static void dir_stack_free(void){
 	pthread_mutex_lock(&mutex_dir_stack);
 
 	for (size_t i = 0; i < dir_stack_len; ++i){
@@ -101,7 +100,7 @@ static void dir_stack_free(void){
 /* Creates a path out of a directory and dirent.d_name
  * This string must be free()'d after use.
  */
-static char* make_path(const char* dir, const char* d_name){
+FF_HOT FF_INLINE static char* make_path(const char* dir, const char* d_name){
 	char* path = malloc(strlen(dir) + strlen(d_name) + 2);
 	if (!path){
 		return NULL;
@@ -115,17 +114,7 @@ static char* make_path(const char* dir, const char* d_name){
 	return path;
 }
 
-inline static void print_result(const char* path, unsigned print0){
-	switch (print0){
-		case 0:
-			printf_mt("%s\n", path);
-			break;
-		default:
-			fwrite(path, 1, strlen(path) + 1, stdout);
-	}
-}
-
-inline static void print_match(const char* path, mode_t st_mode, const struct pattern* pat, char type, unsigned print0){
+FF_INLINE static void print_match(const char* path, mode_t st_mode, const struct pattern* pat, char type, unsigned print0){
 	switch (type){
 	case 'f':
 		if (!S_ISREG(st_mode)){
@@ -152,7 +141,7 @@ inline static void print_match(const char* path, mode_t st_mode, const struct pa
 /* The main finding function.
  * Finds all files in a directory that match ffp->find_me
  */
-int ffind_backend(const char* base_dir, const struct pattern* pattern, const struct ffind_flags* ffl, int max_depth){
+FF_HOT int ffind_backend(const char* base_dir, const struct pattern* pattern, const struct ffind_flags* ffl, int max_depth){
 	DIR* dp;
 	struct dirent* dnt;
 

@@ -27,11 +27,27 @@ struct parsed_data{
 	size_t n_threads;
 };
 
-/* Parses options from the command line and stores them in the output variables.
+/**
+ * @brief Parses options from the command line and stores them in the output structure.
  *
- * Returns 1 if "--help" or "--version" was used, -1 on error, 0 on success.
+ * @param argc The amount of arguments.
+ *
+ * @param argv The arguments.
+ *
+ * @param in_out A pointer to a parsed_data structure that will be filled by this function.<br>
+ * The data must be freed with free_options() when no longer in use.
+ * @see free_options()
+ *
+ * @return 0 on success, positive if "--help" or "--version" were called, negative on failure.
  */
 int parse_options(int argc, char** argv, struct parsed_data* in_out);
+
+/**
+ * @brief Frees the data allocated with a previous call to parse_options()
+ * @see parse_options()
+ *
+ * @param pd The parsed data filled with a previous call to parse_options()
+ */
 void free_options(struct parsed_data* pd);
 
 #endif
